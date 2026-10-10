@@ -21,7 +21,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(
-    command_prefix="!ani ",
+    command_prefix="?ani ",
     intents=intents,
     help_command=None,
 )
@@ -50,35 +50,19 @@ async def on_message(message: discord.Message):
 
 
 @bot.command()
-async def talk(ctx: commands.Context):
-    """Manually make Ani start a conversation with Kat."""
+async def talk(ctx: commands.Context, *, topics: str):
+    """Make Ani start a conversation about your chosen topic."""
     if ctx.channel.id != CONVERSATION_CHANNEL_ID:
         return
 
-    await conversation.start_conversation()
-
-
-@bot.command()
-async def stop(ctx: commands.Context):
-    """Stop an active Ani/Kat conversation."""
-    if ctx.channel.id != CONVERSATION_CHANNEL_ID:
+    topics = topics.strip()
+    if not topics:
+        await ctx.send("Give me a topic, you fcking memer. Example: `?ani talk gacha games`")
         return
 
-    conversation.stop()
-    await ctx.send("Fine. I'll stop bothering Kat. For now.")
-
-
-@bot.command()
-async def status(ctx: commands.Context):
-    """Show Ani's conversation status."""
-    if ctx.channel.id != CONVERSATION_CHANNEL_ID:
-        return
-
-    state = conversation.status()
-    await ctx.send(
-        f"Active: `{state['active']}` | "
-        f"Turns: `{state['turns']}/{state['max_turns']}`"
-    )
+    started = await conversation.start_conversation(topic=topics)
+    if not started:
+        await ctx.send("I'm already talking to Kat. Let us cook.")
 
 
 if not TOKEN:

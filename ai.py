@@ -4,7 +4,7 @@ from google.genai import types
 
 from personality import SYSTEM_PROMPT
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 

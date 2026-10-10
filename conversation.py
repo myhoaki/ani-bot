@@ -1,6 +1,8 @@
+import discord
 import asyncio
 import os
 import random
+import re
 import time
 
 from discord.ext import tasks
@@ -8,23 +10,6 @@ from discord.ext import tasks
 from ai import generate_reply
 
 
-TOPICS = [
-    "your latest gacha pull",
-    "a fictional waifu you are currently obsessed with",
-    "losing a 50/50",
-    "whether fictional characters count as a valid reason to spend money",
-    "which bot would survive a zombie apocalypse",
-    "why Kat is secretly jealous of your gacha luck",
-    "a completely pointless argument about cats versus dogs",
-    "a game you think Kat should play",
-    "a ridiculous hypothetical situation",
-    "something random that would annoy Kat",
-    "your latest terrible financial decision involving gacha",
-    "whether you and Kat would survive being roommates",
-]
-
-MIN_DELAY = int(os.getenv("MIN_TALK_DELAY", "600"))
-MAX_DELAY = int(os.getenv("MAX_TALK_DELAY", "1800"))
 MIN_TURNS = int(os.getenv("MIN_TURNS", "3"))
 MAX_TURNS = int(os.getenv("MAX_TURNS", "8"))
 RESPONSE_TIMEOUT = int(os.getenv("KAT_RESPONSE_TIMEOUT", "90"))
@@ -42,42 +27,49 @@ class ConversationManager:
         self.max_turns = 0
         self.history: list[dict[str, str]] = []
         self.last_started = 0.0
-        self.next_attempt = time.monotonic() + random.randint(MIN_DELAY, MAX_DELAY)
         self._waiting_for_kat = False
         self._timeout_task: asyncio.Task | None = None
 
-        self.random_conversations.start()
 
-    def start(self):
-        if not self.random_conversations.is_running():
-            self.random_conversations.start()
+    @staticmethod
+    def _split_messages(text: str) -> list[str]:
+        """Split model output into short, separate Discord messages."""
+        messages = [line.strip() for line in text.splitlines() if line.strip()]
 
-    @tasks.loop(seconds=30)
-    async def random_conversations(self):
-        if self.active:
-            return
+        if len(messages) == 1 and len(messages[0]) > 180:
+            sentences = re.split(r"(?<=[.!?])\\s+", messages[0])
+            if len(sentences) > 1:
+                messages = [part.strip() for part in sentences if part.strip()]
+            else:
+                words = messages[0].split()
+                messages = [
+                    " ".join(words[i:i + 12])
+                    for i in range(0, len(words), 12)
+                ]
 
-        if time.monotonic() < self.next_attempt:
-            return
+        return messages[:4]
 
-        # Schedule the next opportunity before doing any API work.
-        self.next_attempt = time.monotonic() + random.randint(MIN_DELAY, MAX_DELAY)
+    async def _send_burst(
+        self,
+        channel,
+        text: str,
+        *,
+        mention_first: bool = False,
+    ):
+        messages = self._split_messages(text)
+        if not messages:
+            messages = ["oi"]
 
-        # Most opportunities are intentionally skipped so Ani does not feel
-        # like a scheduled alarm. The cooldown still guarantees a minimum gap.
-        if random.random() > 0.35:
-            return
+        for index, message in enumerate(messages):
+            await self._send_to_kat(
+                channel,
+                message,
+                mention_kat=mention_first and index == 0,
+            )
+            if index < len(messages) - 1:
+                await asyncio.sleep(random.uniform(0.8, 1.6))
 
-        try:
-            await self.start_conversation()
-        except Exception as exc:
-            print(f"Ani random conversation error: {exc}")
-
-    @random_conversations.before_loop
-    async def before_random_conversations(self):
-        await self.bot.wait_until_ready()
-
-    async def start_conversation(self):
+    async def start_conversation(self, topic: str):
         if self.active:
             return False
 
@@ -91,19 +83,31 @@ class ConversationManager:
         self.history = []
         self.last_started = time.monotonic()
 
-        topic = random.choice(TOPICS)
+        topic = topic.strip()
+        if not topic:
+            self.stop()
+            return False
 
         try:
             opener = generate_reply(
                 self.history,
                 (
-                    "Start a conversation with Kat right now. "
-                    f"Your random topic is: {topic}. "
-                    "Say something that feels spontaneous and worth replying to. "
-                    "Do not explain that you were told to start a conversation."
+                    "Start a casual conversation with Kat about this topic: "
+                    f"{topic}\n\n"
+                    "IMPORTANT OUTPUT FORMAT:\n"
+                    "- Write 2-4 short Discord messages, one message per line.\n"
+                    "- Each line will be sent as a separate Discord message.\n"
+                    "- Usually 3-12 words per line. Fragments are good.\n"
+                    "- No paragraphs, no blank lines, no numbering or bullet points.\n"
+                    "- Think out loud, make an observation, add a tangent, or react.\n"
+                    "- Do not write an essay or explain the joke.\n"
+                    "- Sound like Ani chatting with a friend, not an assistant.\n"
+                    "- Sometimes one or two lines are enough; do not pad with filler.\n"
+                    "- Do not include a Kat mention; the bot adds it to the first message.\n"
+                    "- Do not explain that you were told to start a conversation."
                 ),
             )
-            await self._send_to_kat(channel, opener)
+            await self._send_burst(channel, opener, mention_first=True)
             self._arm_response_timeout()
             return True
         except Exception:
@@ -131,13 +135,20 @@ class ConversationManager:
             reply = generate_reply(
                 self.history,
                 (
-                    "Reply to Kat naturally. Keep the conversation moving, "
-                    "but do not force it to continue forever. "
-                    "If the exchange feels like it has reached a natural ending, "
-                    "give a short closing response."
+                    "Continue the ongoing casual Discord conversation with Kat.\n\n"
+                    "IMPORTANT OUTPUT FORMAT:\n"
+                    "- Write 1-3 short Discord messages, one message per line.\n"
+                    "- Each line will be sent as a separate Discord message.\n"
+                    "- Usually 2-10 words per line. Fragments and reactions are good.\n"
+                    "- No paragraphs, no blank lines, no numbering or bullet points.\n"
+                    "- React to Kat's actual message, tease him, or continue a shared joke.\n"
+                    "- Ani can think out loud, change direction, or mention a friend.\n"
+                    "- Statements and emotes are often better than questions.\n"
+                    "- Do not force a punchline or keep the conversation going artificially.\n"
+                    "- Never write a polished monologue or explain the joke."
                 ),
             )
-            await self._send_to_kat(message.channel, reply)
+            await self._send_burst(message.channel, reply)
 
             if self.turns >= self.max_turns:
                 self.stop()
@@ -147,12 +158,32 @@ class ConversationManager:
             print(f"Ani conversation error: {exc}")
             self.stop()
 
-    async def _send_to_kat(self, channel, text: str):
-        text = text.strip()[:1900]
+    async def _send_to_kat(self, channel, text: str, *, mention_kat: bool = False):
+        kat_mention = f"<@{self.kat_bot_id}>"
+
+        text = re.sub(
+            rf"<@!?{self.kat_bot_id}>",
+            "",
+            text,
+        ).strip()
+
+        if mention_kat:
+            text = re.sub(r"(?i)@kat(?:\s+bot)?\b", "", text).strip()
+            text = f"{kat_mention} {text}"[:1990]
+            allowed_mentions = discord.AllowedMentions(
+                users=[discord.Object(id=self.kat_bot_id)]
+            )
+        else:
+            text = re.sub(r"(?i)@kat(?:\s+bot)?\b", "Kat", text)
+            text = text[:1900]
+            allowed_mentions = discord.AllowedMentions.none()
+
+        text = text.strip()
         self.history.append({"role": "model", "text": f"Ani: {text}"})
         self.history = self.history[-HISTORY_LIMIT:]
         self._waiting_for_kat = True
-        await channel.send(text)
+
+        await channel.send(text, allowed_mentions=allowed_mentions)
 
     def _arm_response_timeout(self):
         self._cancel_timeout()
@@ -177,7 +208,6 @@ class ConversationManager:
         self.active = False
         self._waiting_for_kat = False
         self.history.clear()
-        self.next_attempt = time.monotonic() + random.randint(MIN_DELAY, MAX_DELAY)
 
     def status(self):
         return {

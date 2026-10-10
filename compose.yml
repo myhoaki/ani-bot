@@ -1,0 +1,7 @@
+services:
+  ani-bot:
+    build: .
+    container_name: ani-bot
+    restart: unless-stopped
+    env_file:
+      - .env
