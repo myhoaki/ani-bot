@@ -1,12 +1,15 @@
-import os
 from google import genai
 from google.genai import types
 
-from personality import SYSTEM_PROMPT
+from core.config import (
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    GEMINI_TEMPERATURE,
+    GEMINI_MAX_OUTPUT_TOKENS,
+)
+from core.personality import SYSTEM_PROMPT
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
-
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def generate_reply(history: list[dict[str, str]], instruction: str) -> str:
@@ -29,12 +32,12 @@ def generate_reply(history: list[dict[str, str]], instruction: str) -> str:
     )
 
     response = client.models.generate_content(
-        model=MODEL,
+        model=GEMINI_MODEL,
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
-            temperature=1.1,
-            max_output_tokens=180,
+            temperature=GEMINI_TEMPERATURE,
+            max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS,
         ),
     )
 
