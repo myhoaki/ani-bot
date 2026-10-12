@@ -1,195 +1,415 @@
-# Ani-bot
+# Ani-Bot
 
-A small Discord AI bot whose main purpose is to randomly bother Kat-bot.
+A small, self-hosted Discord bot built for a private Discord community.
 
-Ani is Kat's chaotic friend/rival: a shameless gacha addict who loves fictional waifus, terrible financial decisions, and teasing Kat for absolutely no reason.
+Ani is Kat's chaotic friend and rival: a shameless gacha addict who loves fictional waifus, terrible financial decisions, and teasing Kat for absolutely no reason.
 
 ## Features
 
-- Randomly starts conversations with Kat
-- Gemini-powered personality
-- Short-term conversation memory
-- Random conversation topics
-- Configurable conversation length
+- Gemini-powered AI personality
+- Random conversations with Kat-Bot
+- Configurable conversation timing and length
+- Short-term conversation context
 - Manual conversation command
-- Stop/status commands
-- Designed to be intentionally small
+- Random sound playback in voice channels
+- Customizable personality and reactions
+- Docker and Docker Compose support
+- Lightweight, modular project structure
 
 ## Requirements
 
-- Python 3.9+
-- A Discord bot application
-- A Gemini API key
-- Kat-bot in the same server/channel
+- Docker
+- Docker Compose
+- A Discord bot application and token
+- A Google Gemini API key
+- Kat-Bot in the same Discord server
+- Access to a shared conversation channel
 
-The project uses `discord.py` and Google's current `google-genai` Python SDK. Gemini text generation is performed through `client.models.generate_content()`. See the official Google GenAI documentation for current SDK/API usage.
+For local development without Docker, Python 3.12 or newer is recommended.
 
-## Setup
+Ani uses `discord.py` and Google's `google-genai` Python SDK for Discord interactions and Gemini text generation.
+
+## Installation
 
 ### 1. Create the Discord application
 
-Create a second Discord application for Ani.
+Create a separate Discord application for Ani in the Discord Developer Portal.
 
-Give it the bot scope and the permissions it needs to:
+Invite the bot to your Discord server with the permissions it needs to:
 
 - View Channels
 - Send Messages
 - Read Message History
+- Connect to voice channels
+- Speak in voice channels
 
-Ani needs message content access because it needs to read Kat's replies.
+Enable **Message Content Intent** under the bot's privileged gateway intents.
 
-In the Discord Developer Portal, enable the **Message Content Intent** for Ani.
+Ani needs message content access to read conversation context and interact with Kat-Bot.
 
 ### 2. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ani-bot.git
+git clone https://github.com/myhoaki/ani-bot.git
 cd ani-bot
 ```
 
-### 3. Create a virtual environment
+### 3. Configure environment variables
 
-```bash
-python -m venv .venv
-```
-
-Linux/macOS:
-
-```bash
-source .venv/bin/activate
-```
-
-Windows:
-
-```powershell
-.venv\Scripts\activate
-```
-
-### 4. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 5. Configure `.env`
-
-Copy:
+Create the environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Then fill in:
-
-```env
-DISCORD_TOKEN=...
-KAT_BOT_ID=...
-CONVERSATION_CHANNEL_ID=...
-GEMINI_API_KEY=...
-```
-
-Do **not** commit `.env`.
-
-### 6. Run
+Edit it:
 
 ```bash
-python bot.py
+nano .env
 ```
 
-You should see something similar to:
+Configure the required values:
 
-```text
-Logged in as Ani (...)
+```env
+DISCORD_TOKEN=your_ani_bot_token_here
+KAT_BOT_ID=your_kat_bot_user_id
+CONVERSATION_CHANNEL_ID=your_conversation_channel_id
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
+
+Replace the example values with your actual credentials and Discord IDs.
+
+**Never commit `.env` to Git.**
+
+### 4. Build and start Ani
+
+Build the Docker image:
+
+```bash
+docker compose build
+```
+
+Start the bot:
+
+```bash
+docker compose up -d
+```
+
+Check the container status:
+
+```bash
+docker compose ps
+```
+
+View the logs:
+
+```bash
+docker compose logs -f ani-bot
+```
+
+You should see a login message when Ani connects successfully to Discord.
 
 ## Commands
 
-Commands use the `!ani ` prefix.
+Ani's command prefix is `?ani`.
+
+### Help
+
+Display available commands:
 
 ```text
-!ani talk
+?ani help
 ```
 
-Makes Ani start a conversation immediately.
+### Talk
+
+Start a conversation manually:
 
 ```text
-!ani stop
+?ani talk <topic>
 ```
 
-Stops the current conversation.
+Provide a topic for Ani to discuss.
+
+### Troll
+
+Play a random sound in your current voice channel:
 
 ```text
-!ani status
+?ani troll
 ```
 
-Shows whether Ani is currently talking to Kat.
+The user invoking this command must be connected to a voice channel.
 
-## How the random conversation works
+## How Conversations Work
 
-Ani checks periodically whether it should start a conversation.
+Ani is designed to have chaotic, casual conversations with Kat-Bot rather than behave like a general-purpose assistant.
 
-A conversation:
+A typical automated conversation follows this flow:
 
-1. Picks a random topic.
-2. Generates an opening message.
-3. Sends it to the configured channel.
-4. Waits for Kat's message.
-5. Generates Ani's response.
-6. Repeats until the turn limit is reached.
-7. Stops automatically.
+1. Ani periodically checks whether it can start a conversation.
+2. Ani selects a topic and generates an opening message.
+3. Ani sends the message to the configured conversation channel.
+4. Ani waits for Kat-Bot to respond.
+5. Ani generates a reply using the recent conversation context.
+6. The conversation continues until the configured turn limit is reached or a timeout occurs.
+7. Ani stops automatically to prevent endless bot-to-bot conversations.
 
-The turn limit exists to prevent an accidental infinite bot-to-bot conversation.
+Conversation timing and length are configurable through environment variables.
 
-## Important: bot-to-bot messages
+## Configuration
 
-Ani intentionally listens for messages from Kat-bot.
+Ani reads its configuration from environment variables in `.env`.
 
-It ignores messages from other bots.
+| Variable | Description | Default |
+|---|---|---|
+| `DISCORD_TOKEN` | Ani's Discord bot token | Required |
+| `KAT_BOT_ID` | Discord user ID of Kat-Bot | Required |
+| `CONVERSATION_CHANNEL_ID` | Channel used for conversations | Required |
+| `GEMINI_API_KEY` | Google Gemini API key | Required for AI |
+| `GEMINI_MODEL` | Gemini text model | `gemini-3.5-flash-lite` |
+| `GEMINI_TEMPERATURE` | Controls response randomness | `1.1` |
+| `GEMINI_MAX_OUTPUT_TOKENS` | Maximum generated response tokens | `180` |
+| `MIN_TALK_DELAY` | Minimum delay between conversation starts, in seconds | `600` |
+| `MAX_TALK_DELAY` | Maximum delay between conversation starts, in seconds | `1800` |
+| `MIN_TURNS` | Minimum conversation length setting | `3` |
+| `MAX_TURNS` | Maximum conversation length setting | `8` |
+| `KAT_RESPONSE_TIMEOUT` | Time to wait for Kat's response, in seconds | `90` |
+| `HISTORY_LIMIT` | Number of recent messages retained as context | `12` |
 
-Make sure `KAT_BOT_ID` is the actual Discord user ID of Kat-bot.
+These defaults correspond to the example environment configuration. The effective values are determined by the current application code and environment.
 
-## Customizing Ani
+### Conversation timing
 
-The main personality is in:
-
-```text
-personality.py
-```
-
-The random topics are in:
-
-```text
-conversation.py
-```
-
-You can change:
+The default conversation delay settings are:
 
 ```env
 MIN_TALK_DELAY=600
 MAX_TALK_DELAY=1800
 ```
 
-to control how often Ani gets the opportunity to start a conversation.
+This configures a delay range of 10–30 minutes.
 
-For example, for testing:
+For testing, you can temporarily use shorter delays:
 
 ```env
 MIN_TALK_DELAY=30
 MAX_TALK_DELAY=60
 ```
 
-Do not use very short intervals permanently.
+Avoid very short intervals in a shared Discord server.
 
-## Safety / spam control
+### Conversation length
 
-Ani is intentionally conservative:
+The conversation length is controlled by:
 
-- Only one Ani/Kat conversation can be active at a time.
-- Conversations have a maximum number of turns.
-- Ani only watches the configured channel.
-- Ani only treats the configured Kat bot as a conversation partner.
-- Ani has a cooldown between conversation starts.
+```env
+MIN_TURNS=3
+MAX_TURNS=8
+```
+
+These settings help limit bot-to-bot conversations. The exact interpretation of a turn depends on the conversation implementation.
+
+### Message history
+
+Ani uses recent Discord messages as context, with the history limit controlled by:
+
+```env
+HISTORY_LIMIT=12
+```
+
+This setting controls the number of recent messages retained as context; it does not necessarily represent the total number of messages fetched from Discord.
+
+## Docker Management
+
+Ani runs as a Docker Compose service named `ani-bot`.
+
+Start Ani:
+
+```bash
+docker compose up -d
+```
+
+Stop Ani:
+
+```bash
+docker compose down
+```
+
+Restart Ani:
+
+```bash
+docker compose restart
+```
+
+View recent logs:
+
+```bash
+docker compose logs --tail=100 ani-bot
+```
+
+Follow live logs:
+
+```bash
+docker compose logs -f ani-bot
+```
+
+Rebuild after code changes:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+The Compose configuration mounts the `sounds/` directory read-only inside the container:
+
+```text
+sounds/  → /app/sounds:ro
+```
+
+This allows Ani to play sound files without modifying the host's sound assets.
+
+## Project Structure
+
+```text
+ani-bot/
+├── .env.example
+├── .gitignore
+├── Dockerfile
+├── compose.yml
+├── requirements.txt
+├── README.md
+├── bot.py
+│
+├── commands/
+│   ├── __init__.py
+│   ├── help.py
+│   ├── talk.py
+│   └── troll.py
+│
+├── core/
+│   ├── __init__.py
+│   ├── ai.py
+│   ├── config.py
+│   ├── conversation.py
+│   ├── personality.py
+│   ├── reactions.py
+│   └── stickers.py
+│
+└── sounds/
+    └── ... (sound assets)
+```
+
+## Customizing Ani
+
+### Personality
+
+Ani's personality configuration is located in:
+
+```text
+core/personality.py
+```
+
+You can adjust his writing style, interests, humor, and interactions with Kat-Bot.
+
+Ani is intended to sound like a terminally online gacha player: chaotic, opinionated, obsessed with new characters, and prone to questionable spending decisions.
+
+### AI behavior
+
+Gemini integration is handled in:
+
+```text
+core/ai.py
+```
+
+Conversation management is handled in:
+
+```text
+core/conversation.py
+```
+
+Configuration defaults and environment-variable loading are handled in:
+
+```text
+core/config.py
+```
+
+### Sounds
+
+Sound playback commands are defined in:
+
+```text
+commands/troll.py
+```
+
+Sound assets belong in:
+
+```text
+sounds/
+```
+
+The directory is mounted read-only in Docker. Add or remove sound files on the host, then use the command supported by the current bot implementation to play them.
+
+## Safety and Spam Control
+
+Ani includes configurable conversation limits and a timeout to help prevent endless bot-to-bot interactions.
+
+- Automated conversations use the configured conversation channel.
+- Kat-Bot is identified using `KAT_BOT_ID`.
+- Conversation length is bounded by the configured turn settings.
+- A response timeout prevents waiting indefinitely for Kat.
+- Conversation start delays reduce repeated automated messages.
+
+Keep the bot's permissions limited to the channels and features it needs.
+
+## Security
+
+Keep your Discord token and Gemini API key private.
+
+Do not commit these credentials to Git:
+
+```text
+.env
+```
+
+Use `.env.example` to document required environment variables with placeholder values.
+
+If a credential is accidentally exposed, revoke it and generate a replacement immediately.
+
+## Development
+
+Check Python syntax:
+
+```bash
+python -m compileall -q bot.py commands core
+```
+
+Check the staged changes before committing:
+
+```bash
+git diff --check
+git status --short
+```
+
+After making code changes, rebuild and restart Ani:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+Check for startup errors:
+
+```bash
+docker compose logs --tail=100 ani-bot
+```
 
 ## License
 
-MIT
+This project is intended for private self-hosting. No open-source license is currently provided, so no general permission is granted to redistribute, modify, or reuse this project.
+
+Make sure you have permission to use any third-party assets, including sound files and other media, that you add to your own instance.
+
+---
+
+*A gacha addict with a Discord account and absolutely no financial restraint.*
