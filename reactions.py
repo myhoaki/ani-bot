@@ -2,9 +2,9 @@ import random
 import re
 import time
 
-CHANNEL_COOLDOWN = 90
-USER_COOLDOWN = 180
-REACTION_CHANCE = 1
+CHANNEL_COOLDOWN = 30
+USER_COOLDOWN = 60
+REACTION_CHANCE = 0.5
 
 last_channel_reaction = {}
 last_user_reaction = {}
