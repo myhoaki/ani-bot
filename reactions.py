@@ -4,7 +4,7 @@ import time
 
 CHANNEL_COOLDOWN = 90
 USER_COOLDOWN = 180
-REACTION_CHANCE = 0.08
+REACTION_CHANCE = 1
 
 last_channel_reaction = {}
 last_user_reaction = {}
@@ -12,7 +12,7 @@ last_user_reaction = {}
 EMOTES = {
     r"\b(lmao|lmfao|rofl|i can.t|ican.t|dead|💀|hilarious|crying)\b":
         "<:ICANT:1283491796336381972>",
-    r"\b(what|huh|excuse me|no way|seriously|wtf|wth|????)\b":
+    r"\b(what|huh|excuse me|no way|seriously|wtf|wth)\b|\?{2,}":
         "<:nani:1415655246188904510>",
     r"\b(awkward|cringe|embarrassing|yikes|uncomfortable)\b":
         "<:worry_awksmile:1389654049476837406>",

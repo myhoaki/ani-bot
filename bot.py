@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 
 from conversation import ConversationManager
+from reactions import maybe_react
 
 
 logging.basicConfig(
@@ -41,6 +42,12 @@ async def on_ready():
 
 @bot.event
 async def on_message(message: discord.Message):
+    await maybe_react(
+        message,
+        bot.user.id if bot.user else 0,
+        KAT_BOT_ID,
+    )
+
     if message.author.bot:
         if message.author.id == KAT_BOT_ID:
             await conversation.handle_kat_message(message)
