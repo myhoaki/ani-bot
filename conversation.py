@@ -17,10 +17,10 @@ HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "12"))
 
 
 class ConversationManager:
-    def __init__(self, bot, kat_bot_id: int, channel_id: int):
+    def __init__(self, bot, kat_bot_id: int):
         self.bot = bot
         self.kat_bot_id = kat_bot_id
-        self.channel_id = channel_id
+        self.channel_id = None
 
         self.active = False
         self.turns = 0
@@ -69,14 +69,11 @@ class ConversationManager:
             if index < len(messages) - 1:
                 await asyncio.sleep(random.uniform(0.8, 1.6))
 
-    async def start_conversation(self, topic: str):
-        if self.active:
+    async def start_conversation(self, topic: str, channel):
+        if self.active or channel is None:
             return False
 
-        channel = self.bot.get_channel(self.channel_id)
-        if channel is None:
-            return False
-
+        self.channel_id = channel.id
         self.active = True
         self.turns = 0
         self.max_turns = random.randint(MIN_TURNS, MAX_TURNS)
