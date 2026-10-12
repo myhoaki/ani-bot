@@ -1,11 +1,18 @@
+from commands.help import help_command
+from commands.troll import troll_command
+from commands.talk import create_talk_command
 import os
+import asyncio
 import logging
+import random
+from pathlib import Path
 
 import discord
 from discord.ext import commands
 
-from conversation import ConversationManager
-from reactions import maybe_react
+from core.conversation import ConversationManager
+from core.reactions import maybe_react
+from core.stickers import maybe_send_sticker
 
 
 logging.basicConfig(
@@ -21,7 +28,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(
-    command_prefix="?ani ",
+    command_prefix="?",
     intents=intents,
     help_command=None,
 )
@@ -44,6 +51,11 @@ async def on_message(message: discord.Message):
         bot.user.id if bot.user else 0,
         KAT_BOT_ID,
     )
+    await maybe_send_sticker(
+        message,
+        bot.user.id if bot.user else 0,
+        KAT_BOT_ID,
+    )
 
     if message.author.bot:
         if message.author.id == KAT_BOT_ID:
@@ -53,19 +65,21 @@ async def on_message(message: discord.Message):
     await bot.process_commands(message)
 
 
-@bot.command()
-async def talk(ctx: commands.Context, *, topics: str):
-    """Make Ani start a conversation about your chosen topic."""
+@bot.group(name="ani", invoke_without_command=True)
+async def ani(ctx: commands.Context):
+    """Ani bot commands."""
+    await help_command(ctx)
 
-    topics = topics.strip()
-    if not topics:
-        await ctx.send("Give me a topic, you fcking memer. Example: `?ani talk gacha games`")
-        return
 
-    started = await conversation.start_conversation(topic=topics, channel=ctx.channel)
-    if not started:
-        await ctx.send("I'm already talking to Kat. Let us cook.")
+@ani.command(name="help")
+async def ani_help(ctx: commands.Context):
+    await help_command(ctx)
 
+
+
+# Register commands under the ?ani command group.
+ani.add_command(troll_command)
+ani.add_command(create_talk_command(conversation))
 
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN is not set")
